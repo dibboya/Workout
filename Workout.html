@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workout Planner Pro</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-size: cover;
+      background-position: center;
+      min-height: 100vh;
+      color: white;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      backdrop-filter: blur(15px);
+      background: rgba(255,255,255,0.1);
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .clock { position:absolute; top:15px; right:20px; }
+    .day { margin:10px 0; padding:10px; border-radius:15px; background:rgba(255,255,255,0.15); }
+    .exercise { display:flex; align-items:center; margin:5px 0; }
+    input[type="checkbox"] { margin-right:10px; transform:scale(1.2); }
+    .nav {
+      display:flex;
+      justify-content:space-between;
+      margin-top:20px;
+    }
+    button {
+      padding:10px;
+      border:none;
+      border-radius:10px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="clock" id="clock"></div>
+  <h1>Workout Planner</h1>
+  <input type="file" id="bgUpload" />
+
+  <div id="schedule"></div>
+
+  <h2>🔥 Streak: <span id="streak">0</span></h2>
+
+  <div class="nav">
+    <button onclick="prevPhase()">⬅</button>
+    <div id="phaseLabel">Phase 1</div>
+    <button onclick="nextPhase()">➡</button>
+  </div>
+</div>
+
+<script>
+const phases = [
+  {
+    name: "Phase 1 (Weeks 1-2)",
+    plan: {
+      Monday: ["Plank 45s","Leg Raises x12","Push-ups x10","Squats x12"],
+      Tuesday: ["Plank 45s","Bicycle Crunch x10","Glute Bridge x12","Wall Sit 45s"],
+      Wednesday: ["Posture Hold","Stretching"],
+      Thursday: ["Plank 60s","Leg Raises x15","Push-ups x12","Squats x15"],
+      Friday: ["Plank 60s","Bicycle Crunch x12","Glute Bridge x15","Wall Sit 60s"],
+      Saturday: ["Light Core","Stretch"],
+      Sunday: ["Rest"]
+    }
+  },
+  {
+    name: "Phase 2 (Weeks 3-4)",
+    plan: {
+      Monday: ["Plank 75s","Leg Raises x20","Decline Push-ups x12","Squats x20"],
+      Tuesday: ["Russian Twists x20","Bicycle Crunch x15","Single-leg Glute Bridge x12","Wall Sit 75s"],
+      Wednesday: ["Posture + Core Hold","Stretch"],
+      Thursday: ["Plank 90s","Leg Raises x20","Push-ups x15","Squats x20"],
+      Friday: ["Flutter Kicks x30","Bicycle Crunch x20","Glute Bridge x20","Wall Sit 90s"],
+      Saturday: ["Core Burn","Stretch"],
+      Sunday: ["Rest"]
+    }
+  }
+];
+
+let currentPhase = parseInt(localStorage.getItem('phase')) || 0;
+let progress = JSON.parse(localStorage.getItem('progress')) || {};
+let streak = parseInt(localStorage.getItem('streak')) || 0;
+let lastDone = localStorage.getItem('lastDone');
+let lastReset = localStorage.getItem('lastReset');
+
+function resetIfNewDay(){
+  const today = new Date().toDateString();
+  if(lastReset!==today){
+    progress={};
+    localStorage.setItem('progress',JSON.stringify(progress));
+    localStorage.setItem('lastReset',today);
+  }
+}
+
+function render(){
+  const scheduleDiv=document.getElementById('schedule');
+  scheduleDiv.innerHTML='';
+
+  const plan=phases[currentPhase].plan;
+  document.getElementById('phaseLabel').innerText=phases[currentPhase].name;
+
+  Object.keys(plan).forEach(day=>{
+    const div=document.createElement('div'); div.className='day';
+    div.innerHTML=`<h3>${day}</h3>`;
+
+    plan[day].forEach((ex,i)=>{
+      const exDiv=document.createElement('div'); exDiv.className='exercise';
+      const cb=document.createElement('input'); cb.type='checkbox';
+
+      if(!progress[day]) progress[day]={};
+      cb.checked=progress[day][i]||false;
+
+      cb.onchange=()=>{
+        progress[day][i]=cb.checked;
+        localStorage.setItem('progress',JSON.stringify(progress));
+        checkComplete(day,plan);
+      };
+
+      const label=document.createElement('label'); label.innerText=ex;
+      exDiv.appendChild(cb); exDiv.appendChild(label);
+      div.appendChild(exDiv);
+    });
+
+    scheduleDiv.appendChild(div);
+  });
+
+  document.getElementById('streak').innerText=streak;
+}
+
+function checkComplete(day,plan){
+  if(plan[day].every((_,i)=>progress[day][i])) markDone();
+}
+
+function markDone(){
+  const today=new Date().toDateString();
+  if(lastDone!==today){
+    streak++; localStorage.setItem('streak',streak);
+    localStorage.setItem('lastDone',today);
+  }
+}
+
+function nextPhase(){
+  if(currentPhase<phases.length-1){
+    currentPhase++;
+    localStorage.setItem('phase',currentPhase);
+    render();
+  }
+}
+function prevPhase(){
+  if(currentPhase>0){
+    currentPhase--;
+    localStorage.setItem('phase',currentPhase);
+    render();
+  }
+}
+
+// clock
+function updateClock(){ document.getElementById('clock').innerText=new Date().toLocaleTimeString(); }
+setInterval(updateClock,1000); updateClock();
+
+// bg
+const bgUpload=document.getElementById('bgUpload');
+bgUpload.addEventListener('change',function(){
+  const r=new FileReader(); r.onload=e=>{
+    document.body.style.backgroundImage=`url(${e.target.result})`;
+    localStorage.setItem('bg',e.target.result);
+  };
+  r.readAsDataURL(this.files[0]);
+});
+const savedBg=localStorage.getItem('bg');
+if(savedBg) document.body.style.backgroundImage=`url(${savedBg})`;
+
+resetIfNewDay();
+render();
+</script>
+</body>
+</html>
